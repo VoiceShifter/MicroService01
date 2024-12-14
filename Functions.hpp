@@ -14,10 +14,6 @@ extern std::unordered_map<API_PATH, std::unordered_map<API_METHOD, std::vector<A
 extern std::unordered_map<API_PATH, std::unordered_map<API_METHOD, std::vector<API_PARAM>>> AnswerMap;
 extern std::map<std::pair<API_PATH, API_METHOD>, std::function<void(std::map<std::string, std::string>)>> FunctionMap;
 
-bool AuthorizeUser(std::string& Email, std::string& Password);
-void AddUser(std::string& Email, std::string& Password, std::string& PhoneNumber);
-void Differentiate(std::string& Path, std::map<std::string, std::string>& Params, std::string& Method,
-                   std::string& ReturnMessage);
 void NewDifferentiate(std::string& Path, std::map<std::string, std::string>& Params, std::string& Method,
                       std::string& ReturnMessage);
 

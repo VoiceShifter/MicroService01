@@ -19,7 +19,6 @@ void ProcessVector(std::vector<QTcpSocket*>& SocketVector, std::map<std::string,
 {
     std::cout << "Thread started\n";
     using namespace std::chrono_literals;
-
     QTcpSocket* lPointer{};    
     for (;;)
     {
@@ -36,11 +35,14 @@ void ProcessVector(std::vector<QTcpSocket*>& SocketVector, std::map<std::string,
         lPointer = SocketVector[SocketVector.size() - 1];
         if (!lPointer->waitForReadyRead()) {
             std::cerr << "Failed to read from socket: " << lPointer->errorString().toStdString() << std::endl;
+            lPointer->close();
+            delete lPointer;
+            SocketVector.pop_back();
             continue;
         }
         QByteArray Data = lPointer->readAll();
-        lMessage = Data.toStdString();
-        //std::cout << lMessage << '\n';
+        lMessage = QString::fromUtf8(Data).toStdString();
+        std::cout << lMessage << '\n';
 
         char* Token{ std::strtok(const_cast<char*>(lMessage.c_str()), " ") };
         std::vector<std::string> Tokens{};
@@ -86,15 +88,16 @@ void ProcessVector(std::vector<QTcpSocket*>& SocketVector, std::map<std::string,
             continue;
         }
         std::string ApiPath{Tokens[1].substr(1, PathEnd)},
-                     lParams{Tokens[1].substr(PathEnd + 1, Tokens[1].size())},
+                     lParams{Tokens[1].substr(PathEnd + 2, Tokens[1].size())},
             Method{Tokens[0]};
         Tokens.clear();
         std::cout << ApiPath << " - api path\n" << lParams << " - params\n";
-        Token = std::strtok(const_cast<char*>(lParams.c_str()), "?");
+
+        Token = std::strtok(const_cast<char*>(lParams.c_str()), "&");
         for (size_t Iterator{}; Token != nullptr; ++Iterator)
         {
             Tokens.push_back(Token);
-            Token = std::strtok(nullptr, "?");
+            Token = std::strtok(nullptr, "&");
         }
 
         for (size_t Iterator{0}; Iterator < Tokens.size(); ++Iterator)
@@ -103,6 +106,10 @@ void ProcessVector(std::vector<QTcpSocket*>& SocketVector, std::map<std::string,
             Params[Token]=std::strtok(nullptr, "=");
         }
 
+        for (const auto& Iterator : Params)
+        {
+            std::cout << Iterator.first << ' ' << Iterator.second << '\n';
+        }
         //Differentiate(ApiPath, Params, Method, lMessage);
         NewDifferentiate(ApiPath, Params, Method, lMessage);
         lPointer->write(lMessage.c_str());
@@ -130,9 +137,13 @@ signed int main(int argc, char *argv[])
                               {"GET", {"ErrorCode"}},
                               {"PUT", {"ErrorCode"}}};
 
-    FunctionMap[std::make_pair("Api/User/", "POST")] = std::bind(&newAddUser, std::ref(Params), std::ref(ReturnMessage));
-    FunctionMap[std::make_pair("Api/User/", "GET")] = std::bind(&newAuthorizeUser, std::ref(Params), std::ref(ReturnMessage));
-    FunctionMap[std::make_pair("Api/User/", "PUT")] = std::bind(&newDeleteUser, std::ref(Params), std::ref(ReturnMessage));
+    FunctionMap[std::make_pair("Api/User/", "POST")] =
+        std::bind(&newAddUser, std::ref(Params), std::ref(ReturnMessage));
+    FunctionMap[std::make_pair("Api/User/", "GET")] =
+        std::bind(&newAuthorizeUser, std::ref(Params), std::ref(ReturnMessage));
+    FunctionMap[std::make_pair("Api/User/", "PUT")] =
+        std::bind(&newDeleteUser, std::ref(Params), std::ref(ReturnMessage));
+
 
     std::vector<QTcpSocket*> Sockets{};
     QTcpServer MainSocket {};
