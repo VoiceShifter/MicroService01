@@ -8,16 +8,19 @@
 # include <chrono>
 # include <thread>
 # include <QSqlDatabase>
-
+# include <QSqlError>
+# include <QSqlQuery>
+# include <map>
+# include "Functions.hpp"
 std::mutex CoutMutex{};
 
-void ProcessVector(std::vector<QTcpSocket*>& SocketVector)
+void ProcessVector(std::vector<QTcpSocket*>& SocketVector, std::map<std::string,
+                   std::string>& Params, std::string& lMessage)
 {
     std::cout << "Thread started\n";
     using namespace std::chrono_literals;
 
-    QTcpSocket* lPointer{};
-    std::string lMessage{};
+    QTcpSocket* lPointer{};    
     for (;;)
     {
         if (SocketVector.empty())
@@ -37,22 +40,23 @@ void ProcessVector(std::vector<QTcpSocket*>& SocketVector)
         }
         QByteArray Data = lPointer->readAll();
         lMessage = Data.toStdString();
-        std::cout << lMessage << '\n';
+        //std::cout << lMessage << '\n';
 
         char* Token{ std::strtok(const_cast<char*>(lMessage.c_str()), " ") };
         std::vector<std::string> Tokens{};
+        Tokens.reserve(100);
         for (size_t Iterator{}; Token != nullptr; ++Iterator)
         {
             Tokens.push_back(Token);
             Token = std::strtok(nullptr, " ");
         }
-        CoutMutex.lock();
-        for (const auto& Iterator : Tokens)
-        {
-            std::cout << Iterator << ' ';
-        }
-        std::cout << "\n MESSAGE READ \n";
-        CoutMutex.unlock();
+        // CoutMutex.lock();
+        // for (const auto& Iterator : Tokens)
+        // {
+        //     std::cout << Iterator << ' ';
+        // }
+        // std::cout << "\n MESSAGE READ \n";
+        // CoutMutex.unlock();
 
 
         if (Tokens[1].size() < 2) //standart path
@@ -60,44 +64,49 @@ void ProcessVector(std::vector<QTcpSocket*>& SocketVector)
             lMessage = "{\"This is a \": \"test path\"}";
             lPointer->write(lMessage.c_str());
             std::cout << "Standart path entered\n Message Sent\n";
+            lPointer->waitForDisconnected(30);
+            lPointer->close();
+            delete lPointer;
+            SocketVector.pop_back();
+            std::cout << "\n CONNECTION TERMINATED \n";
+            continue;
         }
-        else
-        {
-            std::cout << "\n NOT STANDART \n";
-            size_t PathEnd{Tokens[1].find_last_of('/')};
-            if (PathEnd == 0) //FUCK FAVICON
-            {
-                lMessage = "/";
-                lPointer->waitForDisconnected(30);
-                lPointer->close();
-                delete lPointer;
-                SocketVector.pop_back();
-                std::cout << "\nFUCK FAVICON\n";
-                return;
-            }
-            std::string ApiPath{Tokens[1].substr(1, PathEnd)},
-                         Params{Tokens[1].substr(PathEnd, Tokens[1].size())};
-            std::cout << ApiPath << " - api path\n" << Params << " - params\n";
 
-            if (strcmp(ApiPath.c_str(), "Api/User/Register/"))
-            {
-                lMessage = "You registered user\n";
-            }
-            else if (strcmp(ApiPath.c_str(), "Api/User/Auth/"))
-            {
-                lMessage = "You authorized\n";
-            }
-            else if (strcmp(ApiPath.c_str(), "Api/User/Delete/"))
-            {
-                lMessage = "You deleted user\n";
-            }
-            else if (strcmp(ApiPath.c_str(), "favicon.ico"))
-            {
-                lMessage = "/";
-            }
-            lPointer->write(lMessage.c_str());
-            std::cout << "\n MESSAGE SENT\n";
+
+        std::cout << "\n NOT STANDART \n";
+        size_t PathEnd{Tokens[1].find_last_of('/')};
+        if (PathEnd == 0) //FUCK FAVICON
+        {
+            lMessage = "/";
+            lPointer->waitForDisconnected(30);
+            lPointer->close();
+            delete lPointer;
+            SocketVector.pop_back();
+            std::cout << "\nFUCK FAVICON\n";
+            continue;
         }
+        std::string ApiPath{Tokens[1].substr(1, PathEnd)},
+                     lParams{Tokens[1].substr(PathEnd + 1, Tokens[1].size())},
+            Method{Tokens[0]};
+        Tokens.clear();
+        std::cout << ApiPath << " - api path\n" << lParams << " - params\n";
+        Token = std::strtok(const_cast<char*>(lParams.c_str()), "?");
+        for (size_t Iterator{}; Token != nullptr; ++Iterator)
+        {
+            Tokens.push_back(Token);
+            Token = std::strtok(nullptr, "?");
+        }
+
+        for (size_t Iterator{0}; Iterator < Tokens.size(); ++Iterator)
+        {
+            Token = std::strtok(const_cast<char*>(Tokens[Iterator].c_str()), "=");
+            Params[Token]=std::strtok(nullptr, "=");
+        }
+
+        //Differentiate(ApiPath, Params, Method, lMessage);
+        NewDifferentiate(ApiPath, Params, Method, lMessage);
+        lPointer->write(lMessage.c_str());
+        std::cout << "\n MESSAGE SENT " << lMessage << '\n' ;
         lPointer->waitForDisconnected(30);
         lPointer->close();
         delete lPointer;
@@ -108,6 +117,23 @@ void ProcessVector(std::vector<QTcpSocket*>& SocketVector)
 
 signed int main(int argc, char *argv[])
 {
+
+
+    std::map<std::string, std::string> Params{};
+    std::string ReturnMessage{};
+    MainMap["Api/User/"] = {{"POST", {"Email", "Password", "PhoneNumber"}},
+                            {"GET", {"Email", "Password"}},
+                            {"PUT", {"Email", "Password"}}};
+    MainMap["Api/User/Subscription/"] = {{"POST", {"Email", "Password"}}};
+
+    AnswerMap["Api/User/"] = {{"POST", {"ErrorCode", "Id"}},
+                              {"GET", {"ErrorCode"}},
+                              {"PUT", {"ErrorCode"}}};
+
+    FunctionMap[std::make_pair("Api/User/", "POST")] = std::bind(&newAddUser, std::ref(Params), std::ref(ReturnMessage));
+    FunctionMap[std::make_pair("Api/User/", "GET")] = std::bind(&newAuthorizeUser, std::ref(Params), std::ref(ReturnMessage));
+    FunctionMap[std::make_pair("Api/User/", "PUT")] = std::bind(&newDeleteUser, std::ref(Params), std::ref(ReturnMessage));
+
     std::vector<QTcpSocket*> Sockets{};
     QTcpServer MainSocket {};
     MainSocket.listen(QHostAddress::Any, 32323);
@@ -119,12 +145,12 @@ signed int main(int argc, char *argv[])
         Sockets.push_back(MainSocket.nextPendingConnection());        
         VectorMutex.unlock();
     });
-    std::thread ProcessingThread(&ProcessVector, std::ref(Sockets));
+    std::thread ProcessingThread(&ProcessVector, std::ref(Sockets), std::ref(Params), std::ref(ReturnMessage));
+    ProcessingThread.detach();
     for(;;)
     {
         MainSocket.waitForNewConnection(-1);
     }
-    ProcessingThread.detach();
     std::cout << "Server is listening on port 32323\n";
     return 0;
 }

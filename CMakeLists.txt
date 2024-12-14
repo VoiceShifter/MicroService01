@@ -14,10 +14,15 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Network Sql)
 
 add_executable(MicroService01
   main.cpp
+  Functions.hpp
+  Functions.cpp
 )
 target_link_libraries(MicroService01 Qt${QT_VERSION_MAJOR}::Core)
 target_link_libraries(MicroService01 Qt${QT_VERSION_MAJOR}::Network)
 target_link_libraries(MicroService01 Qt${QT_VERSION_MAJOR}::Sql)
+
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/Users.sqlite
+      DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
 include(GNUInstallDirs)
 install(TARGETS MicroService01
