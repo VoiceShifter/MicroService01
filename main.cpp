@@ -118,6 +118,8 @@ void ProcessVector(std::vector<QTcpSocket*>& SocketVector, std::map<std::string,
         lPointer->close();
         delete lPointer;
         SocketVector.pop_back();
+        Params.clear();
+        lMessage.clear();
         std::cout << "\n CONNECTION TERMINATED \n";
     }
 }
@@ -128,21 +130,21 @@ signed int main(int argc, char *argv[])
 
     std::map<std::string, std::string> Params{};
     std::string ReturnMessage{};
-    MainMap["Api/User/"] = {{"POST", {"Email", "Password", "PhoneNumber"}},
+    MainMap["Api/User/"] = {{"PUT", {"Email", "Password", "PhoneNumber"}},
                             {"GET", {"Email", "Password"}},
-                            {"PUT", {"Email", "Password"}}};
+                            {"POST", {"Email", "Password"}}};
     MainMap["Api/User/Subscription/"] = {{"POST", {"Email", "Password"}}};
 
-    AnswerMap["Api/User/"] = {{"POST", {"ErrorCode", "Id"}},
+    AnswerMap["Api/User/"] = {{"PUT", {"ErrorText", "Id"}},
                               {"GET", {"ErrorCode"}},
-                              {"PUT", {"ErrorCode"}}};
+                              {"POST", {"ErrorCode"}}};
 
-    FunctionMap[std::make_pair("Api/User/", "POST")] =
-        std::bind(&newAddUser, std::ref(Params), std::ref(ReturnMessage));
-    FunctionMap[std::make_pair("Api/User/", "GET")] =
-        std::bind(&newAuthorizeUser, std::ref(Params), std::ref(ReturnMessage));
     FunctionMap[std::make_pair("Api/User/", "PUT")] =
-        std::bind(&newDeleteUser, std::ref(Params), std::ref(ReturnMessage));
+        &newAddUser;
+    FunctionMap[std::make_pair("Api/User/", "GET")] =
+        &newAuthorizeUser;
+    FunctionMap[std::make_pair("Api/User/", "POST")] =
+        &newDeleteUser;
 
 
     std::vector<QTcpSocket*> Sockets{};
