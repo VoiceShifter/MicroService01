@@ -135,9 +135,13 @@ signed int main(int argc, char *argv[])
                             {"POST", {"Email", "Password"}}};
     MainMap["Api/User/Subscription/"] = {{"POST", {"Email", "Password"}}};
 
+
     AnswerMap["Api/User/"] = {{"PUT", {"ErrorText", "Id"}},
                               {"GET", {"ErrorCode"}},
                               {"POST", {"ErrorCode"}}};
+    AnswerMap["Api/User/Subscription/"] = {{"POST", {"ErrorText", "StartDate", "EndDate"}}};
+
+
 
     FunctionMap[std::make_pair("Api/User/", "PUT")] =
         &newAddUser;
@@ -145,6 +149,8 @@ signed int main(int argc, char *argv[])
         &newAuthorizeUser;
     FunctionMap[std::make_pair("Api/User/", "POST")] =
         &newDeleteUser;
+    FunctionMap[std::make_pair("Api/User/Subscription/", "POST")] =
+        &newAddSubscription;
 
 
     std::vector<QTcpSocket*> Sockets{};

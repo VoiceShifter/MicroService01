@@ -141,6 +141,33 @@ void newAuthorizeUser(std::map<std::string, std::string>& Params, std::vector<st
     return;
 }
 
+void newAddSubscription(std::map<std::string, std::string> &Params, std::vector<std::string> &ReturnMessage)
+{
+    std::cout << "\nAdding subscription user\n";
+    QSqlDatabase Users{QSqlDatabase::addDatabase("QSQLITE")};
+    Users.setDatabaseName("Users.sqlite");
+    if (!Users.open()) {
+        qDebug() << Users.lastError().text();
+    }
+    QSqlQuery lSelect;
+    std::stringstream Query;
+    Query << "UPDATE Users SET StartDate = date('now'), EndDate = date('now', '+1 month')  WHERE Email='"
+          << Params.at("Email") << "' and Password = '" << Params.at("Password") << "'"
+          << "and isDeleted = 0 and StartDate == 0" << ";";
+    std::cout << Query.str();
+
+    lSelect.exec(Query.str().c_str());
+    ReturnMessage.push_back("0");
+    Query.str("");
+    Query << "select StartDate, EndDate from Users where Email = '" << Params["Email"]
+          << "' and Password = '" << Params.at("Password") << "'" << "and isDeleted = 0" << ";";
+    std::cout << '\n' << Query.str() << " - this is a query\n";
+    lSelect.exec(Query.str().c_str());
+    lSelect.next();
+    ReturnMessage.push_back(lSelect.value(0).toString().toStdString());
+    ReturnMessage.push_back(lSelect.value(1).toString().toStdString());
+    return;
+}
 
 void CreateReturn(std::vector<std::string> &Answers, std::string& Path,
                   std::string& Method, std::string& ReturnMessage)
@@ -179,3 +206,5 @@ void FalseReturn(std::string &ReturnMessage, signed int State)
     std::cout << Json.str(); //remove later
     ReturnMessage = Json.str();
 }
+
+
