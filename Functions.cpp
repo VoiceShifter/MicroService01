@@ -168,11 +168,18 @@ signed int newAddSubscription(std::map<std::string, std::string> &Params, std::v
           << "'and isDeleted = 0" << ";";
     std::cout << '\n' << Query.str() << " - this is a query\n";
     lSelect.exec(Query.str().c_str());
-    lSelect.next();
+    if (lSelect.next() == true)
+    {
+        ReturnMessage.push_back(lSelect.value(0).toString().toStdString());
+        ReturnMessage.push_back(lSelect.value(1).toString().toStdString());
+        ReturnMessage.push_back(lSelect.value(2).toString().toStdString());
+        return 202;
+    }
+    else if (lSelect.size() < 1)
+    {
+        return 400;
+    }
 
-    ReturnMessage.push_back(lSelect.value(0).toString().toStdString());
-    ReturnMessage.push_back(lSelect.value(1).toString().toStdString());
-    ReturnMessage.push_back(lSelect.value(2).toString().toStdString());
     return 202;
 }
 
