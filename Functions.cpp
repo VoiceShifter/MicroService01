@@ -54,9 +54,9 @@ void NewDifferentiate(std::string& Path, std::map<std::string, std::string>& Par
     }
     else
     {
-        signed int ReturnCode = FunctionMap[std::make_pair(Path, Method)](Params, Returns);
+
         CreateReturn(Returns, Path, Method, ReturnMessage,
-                     ReturnCode);
+                     FunctionMap[std::make_pair(Path, Method)](Params, Returns));
     }
 
 }
@@ -82,7 +82,7 @@ signed int newAddUser(std::map<std::string, std::string>& Params, std::vector<st
         std::cout << ReturnMessage[0];
         return 400;
     }
-    ReturnMessage.push_back("0");
+
     Query.str("");
     Query << "select UUID from Users where Email = '" << Params["Email"] << "';";
     std::cout << Query.str() << " - this is a query\n";
@@ -103,8 +103,7 @@ signed int newDeleteUser(std::map<std::string, std::string>& Params, std::vector
     }
     QSqlQuery lExec;
     std::stringstream Query;
-    Query << "update Users set isDeleted = 1 where Email = '" << Params["Email"]
-          << "' and Password = '" << Params["Password"] << "';";
+    Query << "update Users set isDeleted = 1 where UUID = '" << Params["Id"] << "';";
     std::cout << '\n' << Query.str() << '\n';
 
     if (!lExec.exec(Query.str().c_str()))
@@ -114,9 +113,8 @@ signed int newDeleteUser(std::map<std::string, std::string>& Params, std::vector
         std::cout << ReturnMessage[0];
         return 400;
 
-    }
-    ReturnMessage.push_back("0");
-    return 202;
+    }    
+    return 204;
 }
 
 signed int newAuthorizeUser(std::map<std::string, std::string>& Params, std::vector<std::string>& ReturnMessage)
@@ -137,7 +135,7 @@ signed int newAuthorizeUser(std::map<std::string, std::string>& Params, std::vec
     if (lSelect.next() == true)
     {
         std::cout << "\nUSER AUTHORIZED\n";
-        ReturnMessage.push_back("0");
+        ReturnMessage.push_back(lSelect.value(4).toByteArray().toStdString());
         return 202;
     }
     else
@@ -159,21 +157,22 @@ signed int newAddSubscription(std::map<std::string, std::string> &Params, std::v
     }
     QSqlQuery lSelect;
     std::stringstream Query;
-    Query << "UPDATE Users SET StartDate = date('now'), EndDate = date('now', '+1 month')  WHERE Email='"
-          << Params.at("Email") << "' and Password = '" << Params.at("Password") << "'"
-          << "and isDeleted = 0 and StartDate == 0" << ";";
+    Query << "UPDATE Users SET StartDate = date('now'), EndDate = date('now', '+1 month')  WHERE UUID='"
+          << Params.at("Id") << "'and isDeleted = 0 and StartDate == 0" << ";";
     std::cout << Query.str();
 
     lSelect.exec(Query.str().c_str());
-    ReturnMessage.push_back("0");
+
     Query.str("");
-    Query << "select StartDate, EndDate from Users where Email = '" << Params["Email"]
-          << "' and Password = '" << Params.at("Password") << "'" << "and isDeleted = 0" << ";";
+    Query << "select UUID, StartDate, EndDate from Users where UUID = '" << Params["Id"]
+          << "'and isDeleted = 0" << ";";
     std::cout << '\n' << Query.str() << " - this is a query\n";
     lSelect.exec(Query.str().c_str());
     lSelect.next();
+
     ReturnMessage.push_back(lSelect.value(0).toString().toStdString());
     ReturnMessage.push_back(lSelect.value(1).toString().toStdString());
+    ReturnMessage.push_back(lSelect.value(2).toString().toStdString());
     return 202;
 }
 
@@ -183,7 +182,33 @@ void CreateReturn(std::vector<std::string> &Answers, std::string& Path,
     std::stringstream Response{};
     // QHttpServerResponse qResponse{};
     // qResponse.addHeader("OK", 200);
-    Response << "HTTP/1.0 " << Code << " OK\nContent-Type: application/json\n{\n";
+    std::string Naming{};
+    switch (Code) {
+    case 200:
+        Naming = "OK";
+        break;
+    case 201:
+        Naming = "Created";
+        break;
+    case 202:
+        Naming = "Accepted";
+        break;
+    case 204:
+        Naming = "No content";
+        break;
+    case 400:
+        Naming = "Bad request";
+        break;
+    case 401:
+        Naming = "Unauthorized";
+        break;
+    case 404:
+        Naming = "Not found";
+        break;
+    default:
+        break;
+    }
+    Response << "HTTP/1.0 " << Code << ' ' << Naming << " \nContent-Type: application/json\n{\n";
 
 
     for (size_t Index{}; Index < Answers.size(); ++Index)
@@ -199,7 +224,7 @@ void CreateReturn(std::vector<std::string> &Answers, std::string& Path,
 void FalseReturn(std::string &ReturnMessage, signed int State)
 {
     std::stringstream Response{};
-    Response << "{\n";
+    Response << "HTTP/1.0 " << "404" << " Not found\nContent-Type: application/json\n{\n";
     switch (State) {
     case 1:
         Response << "\"Error\" : \"Wrong path\"\n" ;
@@ -208,13 +233,18 @@ void FalseReturn(std::string &ReturnMessage, signed int State)
         Response << "\"Error\" : \"Wrong Method\"\n" ;
         break;
     case 3:
-        Response << "\"Error\" : \"Wrong Params\"\n" ;
+        Response << "\"Error\" : \"Wrong Amount of params\"\n" ;
+        break;
+    case 4:
+        Response << "\"Error\" : \"Wrong params\"\n" ;
         break;
     default:
         Response << "\"Error\" : \"How did you get here\"\n" ;
         break;
     }
-    Response << '}';
+
+
+    Response << "}\n";
     std::cout << Response.str(); //remove later
     ReturnMessage = Response.str();
 }

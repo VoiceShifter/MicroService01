@@ -58,61 +58,66 @@ void ProcessVector(std::vector<QTcpSocket*>& SocketVector, std::map<std::string,
         // std::cout << "\n MESSAGE READ \n";
         // CoutMutex.unlock();
         std::vector<std::string> PMP{};
+        std::string ApiPath{}, lParams{}, Method{};
         if (Tokens[0].find('?') == Tokens[1].npos) //POST PUT ETC
         {   //Tokenize first string for method and path
             //Last second for Parameters
-
+            Token = std::strtok(const_cast<char*>(Tokens[0].c_str()), " ");
+            PMP.push_back(Token);
+            Token = std::strtok(nullptr, " ");
+            PMP.push_back(Token);
+            Token = std::strtok(const_cast<char*>(Tokens[Tokens.size() - 1].c_str()), "&");
+            for (;Token!= nullptr;)
+            {
+                PMP.push_back(Token);
+                Token = std::strtok(nullptr, "&");
+            }
+            Method = PMP[0];
+            ApiPath = PMP[1];
+            for (size_t Index{2}; Index < PMP.size(); ++Index)
+            {
+                lParams += PMP[Index] + '\n';
+            }
         }
         else //GET
         {   //Tokenize first string for method, path and params
-            Token = std::strtok(Tokens[0], " ");
+            Token = std::strtok(const_cast<char*>(Tokens[0].c_str()), " ");
             for (;Token != nullptr;)
             {
-
+                PMP.push_back(Token);
+                Token = std::strtok(nullptr, " ?&");
             }
-        }
-        if (Tokens[1].size() < 2) //standart path
-        {
-            lMessage = "{\"This is a \": \"test path\"}";
-            lPointer->write(lMessage.c_str());
-            //std::cout << "Standart path entered\n Message Sent\n";
-            lPointer->waitForDisconnected(30);
-            lPointer->close();
-            delete lPointer;
-            SocketVector.pop_back();
-            std::cout << "\n CONNECTION TERMINATED \n";
-            continue;
+            if (PMP.size() < 4)
+            {
+                std::cout << "Something wrong\n";
+                return;
+            }
+            ApiPath = PMP[1];
+            lParams = PMP[2] + '\n' + PMP[3],
+            Method = Tokens[0];
         }
 
 
-        std::cout << "\n NOT STANDART \n";
-        size_t PathEnd{Tokens[1].find_last_of('/')};
-        if (PathEnd == 0) //FUCK FAVICON
-        {
-            lMessage = "/";
-            lPointer->waitForDisconnected(30);
-            lPointer->close();
-            delete lPointer;
-            SocketVector.pop_back();
-            std::cout << "\nFUCK FAVICON\n";
-            continue;
-        }
-        std::string ApiPath{Tokens[1].substr(1, PathEnd)},
-                    lParams{Tokens[1].substr(PathEnd + 2, Tokens[1].size())},
-            Method{Tokens[0]};
+        // std::cout << "\n NOT STANDART \n";
+        // if (PathEnd == 0) //FUCK FAVICON
+        // {
+        //     lMessage = "/";
+        //     lPointer->waitForDisconnected(30);
+        //     lPointer->close();
+        //     delete lPointer;
+        //     SocketVector.pop_back();
+        //     std::cout << "\nFUCK FAVICON\n";
+        //     continue;
+        // }
+
         Tokens.clear();
         std::cout << ApiPath << " - api path\n" << lParams << " - params\n";
 
-        Token = std::strtok(const_cast<char*>(lParams.c_str()), "&");
-        for (size_t Iterator{}; Token != nullptr; ++Iterator)
-        {
-            Tokens.push_back(Token);
-            Token = std::strtok(nullptr, "&");
-        }
 
-        for (size_t Iterator{0}; Iterator < Tokens.size(); ++Iterator)
+
+        for (size_t Iterator{2}; Iterator < PMP.size(); ++Iterator)
         {
-            Token = std::strtok(const_cast<char*>(Tokens[Iterator].c_str()), "=");
+            Token = std::strtok(const_cast<char*>(PMP[Iterator].c_str()), "=");
             Params[Token]=std::strtok(nullptr, "=");
         }
 
@@ -141,26 +146,26 @@ signed int main(int argc, char *argv[])
 
     std::map<std::string, std::string> Params{};
     std::string ReturnMessage{};
-    MainMap["Api/User/"] = {{"PUT", {"Email", "Password", "PhoneNumber"}},
-                            {"GET", {"Email", "Password"}},
-                            {"POST", {"Email", "Password"}}};
-    MainMap["Api/User/Subscription/"] = {{"POST", {"Email", "Password"}}};
+    MainMap["/Api/User/"] = {{"POST", {"Email", "Password", "PhoneNumber"}},
+                            {"DELETE", {"Id"}}};
+    MainMap["/Api/User/Subscription/"] = {{"PUT", {"Id"}}};
+    MainMap["/Api/Auth/"] = {{"POST", {"Email", "Password"}}};
+
+    AnswerMap["/Api/User/"] = {{"POST", {"Id"}},
+                              {"DELETE", {}}};
+    AnswerMap["/Api/User/Subscription/"] = {{"PUT", {"Id", "StartDate", "EndDate"}}};
+    AnswerMap["/Api/Auth/"] = {{"POST", {"Id"}}};
 
 
-    AnswerMap["Api/User/"] = {{"PUT", {"ErrorText", "Id"}},
-                              {"GET", {"ErrorCode"}},
-                              {"POST", {"ErrorCode"}}};
-    AnswerMap["Api/User/Subscription/"] = {{"POST", {"ErrorText", "StartDate", "EndDate"}}};
 
 
-
-    FunctionMap[std::make_pair("Api/User/", "PUT")] =
+    FunctionMap[std::make_pair("/Api/User/", "POST")] =
         &newAddUser;
-    FunctionMap[std::make_pair("Api/User/", "GET")] =
-        &newAuthorizeUser;
-    FunctionMap[std::make_pair("Api/User/", "POST")] =
+    FunctionMap[std::make_pair("/Api/User/", "DELETE")] =
         &newDeleteUser;
-    FunctionMap[std::make_pair("Api/User/Subscription/", "POST")] =
+    FunctionMap[std::make_pair("/Api/Auth/", "POST")] =
+        &newAuthorizeUser;
+    FunctionMap[std::make_pair("/Api/User/Subscription/", "PUT")] =
         &newAddSubscription;
 
 
