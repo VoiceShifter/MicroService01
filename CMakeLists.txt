@@ -9,17 +9,19 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Network Sql)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Network Sql)
+find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Network Sql HttpServer)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Network Sql HttpServer)
 
 add_executable(MicroService01
   main.cpp
   Functions.hpp
   Functions.cpp
+
 )
 target_link_libraries(MicroService01 Qt${QT_VERSION_MAJOR}::Core)
 target_link_libraries(MicroService01 Qt${QT_VERSION_MAJOR}::Network)
 target_link_libraries(MicroService01 Qt${QT_VERSION_MAJOR}::Sql)
+target_link_libraries(MicroService01 Qt${QT_VERSION_MAJOR}::HttpServer)
 
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/Users.sqlite
       DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

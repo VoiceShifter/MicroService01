@@ -26,9 +26,7 @@ void ProcessVector(std::vector<QTcpSocket*>& SocketVector, std::map<std::string,
         {
 
             std::this_thread::sleep_for(500ms);
-            CoutMutex.lock();
-            std::cout << "Is empty\n";
-            CoutMutex.unlock();
+
             continue;
         }
         std::cout << "SocketVector is not empty!\n";
@@ -44,13 +42,13 @@ void ProcessVector(std::vector<QTcpSocket*>& SocketVector, std::map<std::string,
         lMessage = QString::fromUtf8(Data).toStdString();
         std::cout << lMessage << '\n';
 
-        char* Token{ std::strtok(const_cast<char*>(lMessage.c_str()), " ") };
+        char* Token{ std::strtok(const_cast<char*>(lMessage.c_str()), "\n") };
         std::vector<std::string> Tokens{};
         Tokens.reserve(100);
         for (size_t Iterator{}; Token != nullptr; ++Iterator)
         {
             Tokens.push_back(Token);
-            Token = std::strtok(nullptr, " ");
+            Token = std::strtok(nullptr, "\n");
         }
         // CoutMutex.lock();
         // for (const auto& Iterator : Tokens)
@@ -59,13 +57,25 @@ void ProcessVector(std::vector<QTcpSocket*>& SocketVector, std::map<std::string,
         // }
         // std::cout << "\n MESSAGE READ \n";
         // CoutMutex.unlock();
+        std::vector<std::string> PMP{};
+        if (Tokens[0].find('?') == Tokens[1].npos) //POST PUT ETC
+        {   //Tokenize first string for method and path
+            //Last second for Parameters
 
+        }
+        else //GET
+        {   //Tokenize first string for method, path and params
+            Token = std::strtok(Tokens[0], " ");
+            for (;Token != nullptr;)
+            {
 
+            }
+        }
         if (Tokens[1].size() < 2) //standart path
         {
             lMessage = "{\"This is a \": \"test path\"}";
             lPointer->write(lMessage.c_str());
-            std::cout << "Standart path entered\n Message Sent\n";
+            //std::cout << "Standart path entered\n Message Sent\n";
             lPointer->waitForDisconnected(30);
             lPointer->close();
             delete lPointer;
@@ -88,7 +98,7 @@ void ProcessVector(std::vector<QTcpSocket*>& SocketVector, std::map<std::string,
             continue;
         }
         std::string ApiPath{Tokens[1].substr(1, PathEnd)},
-                     lParams{Tokens[1].substr(PathEnd + 2, Tokens[1].size())},
+                    lParams{Tokens[1].substr(PathEnd + 2, Tokens[1].size())},
             Method{Tokens[0]};
         Tokens.clear();
         std::cout << ApiPath << " - api path\n" << lParams << " - params\n";
@@ -113,8 +123,9 @@ void ProcessVector(std::vector<QTcpSocket*>& SocketVector, std::map<std::string,
         //Differentiate(ApiPath, Params, Method, lMessage);
         NewDifferentiate(ApiPath, Params, Method, lMessage);
         lPointer->write(lMessage.c_str());
+        lPointer->waitForBytesWritten();
         std::cout << "\n MESSAGE SENT " << lMessage << '\n' ;
-        lPointer->waitForDisconnected(30);
+        lPointer->waitForDisconnected(300);
         lPointer->close();
         delete lPointer;
         SocketVector.pop_back();
